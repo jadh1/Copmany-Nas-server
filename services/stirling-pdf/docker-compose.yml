@@ -1,0 +1,27 @@
+services:
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    volumes:
+      - stirling-data:/usr/share/tessdata
+      - stirling-config:/configs
+    environment:
+      - TZ=${TZ}
+      - DOCKER_ENABLE_SECURITY=false
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling.rule=Host(`pdf.${DOMAIN}`)"
+      - "traefik.http.routers.stirling.entrypoints=websecure"
+      - "traefik.http.routers.stirling.tls.certresolver=letsencrypt"
+      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
+    networks:
+      - proxy
+
+volumes:
+  stirling-data:
+  stirling-config:
+
+networks:
+  proxy:
+    external: true

@@ -1,0 +1,64 @@
+name: Deploy → Server A
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Server A
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Deploy to Server A via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_A_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "================================================"
+            echo "  Deploying to Server A — $(date)"
+            echo "================================================"
+
+            cd /opt/server
+            git fetch origin main
+            git pull origin main
+
+            echo ""
+            echo "--- Updating services ---"
+            for service in services/*/; do
+              SERVICE_NAME=$(basename $service)
+              echo ""
+              echo "▶ $SERVICE_NAME"
+              cd /opt/server/$service
+
+              # Pull latest image
+              docker compose pull --quiet
+
+              # Restart only if image changed or config changed
+              docker compose up -d --remove-orphans
+
+              cd /opt/server
+            done
+
+            echo ""
+            echo "--- Cleaning unused images ---"
+            docker image prune -f
+
+            echo ""
+            echo "--- Container status ---"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "================================================"
+            echo "  ✅ Deploy complete on Server A"
+            echo "================================================"

@@ -1,0 +1,19 @@
+# NEVER commit these
+.env
+*.env.local
+letsencrypt/
+acme.json
+*.log
+
+# Nextcloud data
+nextcloud/data/
+
+# Duplicati database
+duplicati/data/
+
+# AdGuard data
+adguard/data/
+
+# OS
+.DS_Store
+Thumbs.db

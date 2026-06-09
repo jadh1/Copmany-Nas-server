@@ -1,0 +1,118 @@
+---
+- name: Setup Company Server (Ubuntu 24.04)
+  hosts: servers
+  become: true
+
+  vars:
+    server_user: ubuntu
+    repo_url: "https://github.com/YOUR_ORG/company-server.git"
+    server_path: /opt/server
+
+  tasks:
+
+    - name: Update and upgrade apt
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Install required packages
+      apt:
+        name:
+          - curl
+          - git
+          - htop
+          - ufw
+          - fail2ban
+          - unattended-upgrades
+          - ca-certificates
+          - gnupg
+          - lsb-release
+        state: present
+
+    - name: Add Docker GPG key
+      shell: |
+        install -m 0755 -d /etc/apt/keyrings
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      shell: |
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+    - name: Install Docker
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        update_cache: yes
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: "{{ server_user }}"
+        groups: docker
+        append: yes
+
+    - name: Create Docker proxy network
+      shell: docker network create proxy || true
+
+    - name: Install Tailscale
+      shell: curl -fsSL https://tailscale.com/install.sh | sh
+
+    - name: Configure UFW firewall
+      shell: |
+        ufw default deny incoming
+        ufw default allow outgoing
+        ufw allow ssh
+        ufw allow 80/tcp
+        ufw allow 443/tcp
+        ufw allow 53/tcp
+        ufw allow 53/udp
+        ufw --force enable
+
+    - name: Configure fail2ban
+      copy:
+        content: |
+          [DEFAULT]
+          bantime = 3600
+          findtime = 600
+          maxretry = 5
+
+          [sshd]
+          enabled = true
+        dest: /etc/fail2ban/jail.local
+      notify: restart fail2ban
+
+    - name: Clone server repo
+      git:
+        repo: "{{ repo_url }}"
+        dest: "{{ server_path }}"
+        version: main
+        force: yes
+
+    - name: Create acme.json for Traefik
+      file:
+        path: "{{ server_path }}/services/traefik/acme.json"
+        state: touch
+        mode: "0600"
+
+    - name: Create storage mount point
+      file:
+        path: /mnt/storage
+        state: directory
+        mode: "0755"
+
+    - name: Create backup mount point
+      file:
+        path: /mnt/backup
+        state: directory
+        mode: "0755"
+
+  handlers:
+    - name: restart fail2ban
+      service:
+        name: fail2ban
+        state: restarted

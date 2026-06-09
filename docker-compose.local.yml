@@ -1,0 +1,191 @@
+services:
+
+  # ============================================================
+  # TRAEFIK — Reverse Proxy
+  # ============================================================
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "8080:8080"  # Traefik dashboard (local only)
+    command:
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--log.level=INFO"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - proxy
+
+  # ============================================================
+  # NEXTCLOUD DATABASE
+  # ============================================================
+  nextcloud-db:
+    image: mariadb:11
+    container_name: nextcloud-db
+    restart: unless-stopped
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+      - nextcloud-db:/var/lib/mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASSWORD}
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - TZ=${TZ}
+    networks:
+      - nextcloud-internal
+
+  # ============================================================
+  # NEXTCLOUD REDIS CACHE
+  # ============================================================
+  nextcloud-redis:
+    image: redis:7-alpine
+    container_name: nextcloud-redis
+    restart: unless-stopped
+    networks:
+      - nextcloud-internal
+
+  # ============================================================
+  # NEXTCLOUD — Main App
+  # ============================================================
+  nextcloud:
+    image: nextcloud:28
+    container_name: nextcloud
+    restart: unless-stopped
+    depends_on:
+      - nextcloud-db
+      - nextcloud-redis
+    volumes:
+      - nextcloud-data:/var/www/html
+    environment:
+      - MYSQL_HOST=nextcloud-db
+      - MYSQL_DATABASE=nextcloud
+      - MYSQL_USER=nextcloud
+      - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
+      - NEXTCLOUD_ADMIN_USER=${NEXTCLOUD_ADMIN_USER}
+      - NEXTCLOUD_ADMIN_PASSWORD=${NEXTCLOUD_ADMIN_PASSWORD}
+      - NEXTCLOUD_TRUSTED_DOMAINS=files.localhost
+      - REDIS_HOST=nextcloud-redis
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nextcloud.rule=Host(`files.localhost`)"
+      - "traefik.http.routers.nextcloud.entrypoints=web"
+      - "traefik.http.services.nextcloud.loadbalancer.server.port=80"
+    networks:
+      - proxy
+      - nextcloud-internal
+
+  # ============================================================
+  # ONLYOFFICE — Document Editor
+  # ============================================================
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    container_name: onlyoffice
+    restart: unless-stopped
+    environment:
+      - JWT_ENABLED=true
+      - JWT_SECRET=${ONLYOFFICE_JWT_SECRET}
+      - JWT_HEADER=Authorization
+      - JWT_IN_BODY=true
+      - TZ=${TZ}
+    volumes:
+      - onlyoffice-data:/var/www/onlyoffice/Data
+      - onlyoffice-logs:/var/log/onlyoffice
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.onlyoffice.rule=Host(`office.localhost`)"
+      - "traefik.http.routers.onlyoffice.entrypoints=web"
+      - "traefik.http.services.onlyoffice.loadbalancer.server.port=80"
+    networks:
+      - proxy
+
+  # ============================================================
+  # PORTAINER — Container Management
+  # ============================================================
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer-data:/data
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.portainer.rule=Host(`portainer.localhost`)"
+      - "traefik.http.routers.portainer.entrypoints=web"
+      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
+    networks:
+      - proxy
+
+  # ============================================================
+  # STIRLING PDF — PDF Tools
+  # ============================================================
+  stirling-pdf:
+    image: frooodle/s-pdf:latest
+    container_name: stirling-pdf
+    restart: unless-stopped
+    volumes:
+      - stirling-data:/usr/share/tessdata
+      - stirling-config:/configs
+    environment:
+      - TZ=${TZ}
+      - DOCKER_ENABLE_SECURITY=false
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling.rule=Host(`pdf.localhost`)"
+      - "traefik.http.routers.stirling.entrypoints=web"
+      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
+    networks:
+      - proxy
+
+  # ============================================================
+  # NETDATA — Server Monitoring
+  # ============================================================
+  netdata:
+    image: netdata/netdata:latest
+    container_name: netdata
+    restart: unless-stopped
+    pid: host
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - netdata-config:/etc/netdata
+      - netdata-lib:/var/lib/netdata
+      - netdata-cache:/var/cache/netdata
+    environment:
+      - TZ=${TZ}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.netdata.rule=Host(`monitor.localhost`)"
+      - "traefik.http.routers.netdata.entrypoints=web"
+      - "traefik.http.services.netdata.loadbalancer.server.port=19999"
+    networks:
+      - proxy
+
+volumes:
+  nextcloud-db:
+  nextcloud-data:
+  onlyoffice-data:
+  onlyoffice-logs:
+  portainer-data:
+  stirling-data:
+  stirling-config:
+  netdata-config:
+  netdata-lib:
+  netdata-cache:
+
+networks:
+  proxy:
+    external: true
+  nextcloud-internal:
+    internal: true
