@@ -1,4 +1,4 @@
-# Company Private Cloud Infrastructure
+# KDCLB Enterprise Private Cloud Infrastructure
 
 [![OS: Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-E95420?logo=ubuntu)](https://ubuntu.com/)
 ![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker)
@@ -10,7 +10,7 @@
 **A highly available, self-hosted enterprise private cloud infrastructure designed for secure file synchronization, collaborative document editing, and centralized internal tooling.**
 
 > **Target Audience**
-> This infrastructure is engineered for company personnel requiring secure, real-time collaboration platforms, and systems administrators overseeing multi-site deployments with stringent security and uptime requirements.
+> This infrastructure is engineered for KDCLB personnel requiring secure, real-time collaboration platforms, and systems administrators overseeing multi-site deployments with stringent security and uptime requirements.
 
 > **Business Value**
 > Replaces fragmented, high-cost public SaaS subscriptions with a unified, self-hosted private cloud. It ensures complete data sovereignty, offers enterprise-grade capabilities, and drastically reduces operational expenditures across multiple organizational locations.
@@ -40,9 +40,9 @@ Prior to deployment, ensure organizational accounts and API credentials are prov
 
 ## Infrastructure Overview
 
-This Company Private Cloud serves as an integrated, self-hosted ecosystem. It provides personnel with secure data storage and real-time collaboration tools, while equipping administrators with a centralized dashboard for deployment, monitoring, and automated disaster recovery.
+This KDCLB Private Cloud serves as an integrated, self-hosted ecosystem. It provides personnel with secure data storage and real-time collaboration tools, while equipping administrators with a centralized dashboard for deployment, monitoring, and automated disaster recovery.
 
-**For Organizational Personnel:** Access organizational assets securely from any location via `files.company.com`. Collaborate on standard document formats (Word, Excel, PowerPoint) directly within the browser, and leverage internal utilities for document processing.
+**For Organizational Personnel:** Access organizational assets securely from any location via `files.kdclb.com`. Collaborate on standard document formats (Word, Excel, PowerPoint) directly within the browser, and leverage internal utilities for document processing.
 
 **For Systems Administrators:** Execute seamless, automated deployments across multiple server environments utilizing GitHub Actions. Monitor system telemetry in real-time, manage containerized workloads, and ensure business continuity through automated backup schedules.
 
@@ -68,19 +68,19 @@ This Company Private Cloud serves as an integrated, self-hosted ecosystem. It pr
 
 | Capability | Access Point | Description |
 |---------|-------------|-------------|
-| **File Storage & Synchronization** | `files.company.com` | Nextcloud deployment for enterprise file sharing and cross-device synchronization. |
-| **Collaborative Editing** | `office.company.com` | ONLYOFFICE integration for browser-based document co-authoring. |
-| **Document Processing** | `pdf.company.com` | Stirling PDF for internal document modification, merging, and secure conversion. |
-| **Network Protection** | `dns.company.com` | Internal DNS resolution and threat filtering powered by AdGuard. |
+| **File Storage & Synchronization** | `files.kdclb.com` | Nextcloud deployment for enterprise file sharing and cross-device synchronization. |
+| **Collaborative Editing** | `office.kdclb.com` | ONLYOFFICE integration for browser-based document co-authoring. |
+| **Document Processing** | `pdf.kdclb.com` | Stirling PDF for internal document modification, merging, and secure conversion. |
+| **Network Protection** | `dns.kdclb.com` | Internal DNS resolution and threat filtering powered by AdGuard. |
 
 ### Administrative Tooling
 
 | Capability | Access Point | Description |
 |---------|-------------|-------------|
-| **Workload Management** | `portainer.company.com` | Portainer dashboard for visual container orchestration and lifecycle management. |
-| **System Telemetry** | `monitor.company.com` | Netdata integration providing real-time hardware utilization and process monitoring. |
-| **Disaster Recovery** | `backup.company.com` | Duplicati interface for configuring retention policies and executing granular restorations. |
-| **Traffic Orchestration** | `traefik.company.com` | Traefik dashboard for monitoring internal routing and reverse proxy health. |
+| **Workload Management** | `portainer.kdclb.com` | Portainer dashboard for visual container orchestration and lifecycle management. |
+| **System Telemetry** | `monitor.kdclb.com` | Netdata integration providing real-time hardware utilization and process monitoring. |
+| **Disaster Recovery** | `backup.kdclb.com` | Duplicati interface for configuring retention policies and executing granular restorations. |
+| **Traffic Orchestration** | `traefik.kdclb.com` | Traefik dashboard for monitoring internal routing and reverse proxy health. |
 
 ### Advanced Technical Capabilities
 
