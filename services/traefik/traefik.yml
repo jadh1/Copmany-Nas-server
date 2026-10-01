@@ -10,6 +10,11 @@ entryPoints:
     http:
       tls:
         certResolver: letsencrypt
+  admin:
+    address: ":8443"
+    http:
+      tls:
+        certResolver: letsencrypt
 
 providers:
   docker:

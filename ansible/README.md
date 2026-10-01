@@ -28,49 +28,54 @@ ssh-copy-id -i ~/.ssh/company_server_key.pub ubuntu@SERVER_B_IP
 ### 4. Update inventory.ini
 Replace `SERVER_A_IP` and `SERVER_B_IP` with real IPs.
 
-### 5. Run Ansible playbook (installs everything)
+### 5. Configure Storage and Access Facts
+Copy `group_vars/all.yml.example` to `group_vars/all.yml`:
+```bash
+cp group_vars/all.yml.example group_vars/all.yml
+nano group_vars/all.yml
+```
+Record the approved mount sources, filesystems, and Tailscale access settings.
+
+### 6. Run Ansible Playbook
 ```bash
 cd ansible
 ansible-playbook -i inventory.ini playbook.yml
 ```
 
-### 6. Copy .env.example to .env on each server
+### 7. Configure Server Environment
 ```bash
 ssh ubuntu@SERVER_A_IP
 cp /opt/server/.env.example /opt/server/.env
-nano /opt/server/.env   # fill in all values
+nano /opt/server/.env   # fill in all values matching storage & Tailscale facts
 ```
 
-### 7. Start Traefik first
+### 8. Connect Tailscale
 ```bash
-cd /opt/server/services/traefik
-docker compose up -d
+sudo tailscale up --authkey=YOUR_AUTH_KEY
 ```
 
-### 8. Start all other services
+### 9. Verify Storage and Start Managed Services
+Do not run direct `docker compose up -d` (production services require the `managed` profile and storage validation):
 ```bash
-cd /opt/server/services/nextcloud && docker compose up -d
-cd /opt/server/services/portainer && docker compose up -d
-cd /opt/server/services/netdata && docker compose up -d
-cd /opt/server/services/duplicati && docker compose up -d
-cd /opt/server/services/adguard && docker compose up -d
-cd /opt/server/services/watchtower && docker compose up -d
-cd /opt/server/services/stirling-pdf && docker compose up -d
-```
+# Run production preflight check
+/opt/server/scripts/production-preflight.sh
 
-### 9. Connect Tailscale
-```bash
-tailscale up --authkey=YOUR_AUTH_KEY
+# Start all applications via the systemd lifecycle
+sudo systemctl start company-applications.service
+
+# Verify health status
+sudo systemctl status company-applications.service
 ```
 
 ## After Setup — Services Available At
 
-| Service | URL |
-|---------|-----|
-| Files | https://files.company.com |
-| Monitoring | https://monitor.company.com |
-| Backups | https://backup.company.com |
-| DNS | https://dns.company.com |
-| PDF Tools | https://pdf.company.com |
-| Portainer | https://portainer.company.com |
-| Traefik | https://traefik.company.com |
+| Service | Scope | URL |
+|---------|-------|-----|
+| Files (Nextcloud) | Public HTTPS (443) | `https://files.company.com` |
+| Document Editing (ONLYOFFICE) | Public HTTPS (443) | `https://office.company.com` |
+| Monitoring (Netdata) | Tailnet Only (8443) | `https://monitor.company.com:8443` |
+| Backups (Duplicati) | Tailnet Only (8443) | `https://backup.company.com:8443` |
+| DNS Management (AdGuard) | Tailnet Only (8443) | `https://dns.company.com:8443` |
+| PDF Tools (Stirling PDF) | Tailnet Only (8443) | `https://pdf.company.com:8443` |
+| Container Admin (Portainer) | Tailnet Only (8443) | `https://portainer.company.com:8443` |
+| Reverse Proxy (Traefik) | Tailnet Only (8443) | `https://traefik.company.com:8443` |

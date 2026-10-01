@@ -1,0 +1,22 @@
+---
+# Copy to ansible/group_vars/all.yml and set values only after a hardware review.
+# Do not place encryption keys or passwords in this file.
+company_storage_configured: false
+company_storage_root: /mnt/company
+company_backup_root: /mnt/company-backup
+
+# REQUIRED HARDWARE DECISION: set only after `findmnt` confirms the mounted pool.
+# Examples for a selected ZFS design: company  /  zfs
+# Examples for another supported design: UUID=...  /  ext4
+company_storage_expected_source: ""
+company_storage_expected_fstype: ""
+company_backup_expected_source: ""
+company_backup_expected_fstype: ""
+# The old bind-mounted Nextcloud data path; leave blank only for a confirmed fresh host.
+company_legacy_nextcloud_data_path: /mnt/storage
+
+# REQUIRED ACCESS DECISION: set true only after a tested Tailnet or console route exists.
+company_tailscale_access_confirmed: false
+company_admin_user: ubuntu
+# Optional. DNS is denied by default; explicitly scope it to company LAN ranges.
+adguard_dns_allowed_cidrs: []

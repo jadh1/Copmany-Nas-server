@@ -1,0 +1,10 @@
+# Managed by Ansible only after a tested Tailscale/console recovery path is confirmed.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+X11Forwarding no
+MaxAuthTries 3
+LoginGraceTime 30
+AllowUsers {{ company_admin_user }}

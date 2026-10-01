@@ -1,29 +1,25 @@
 services:
   adguard:
-    image: adguard/adguardhome:latest
+    image: adguard/adguardhome:v0.107.52
     container_name: adguard
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     ports:
       - "53:53/tcp"     # DNS
       - "53:53/udp"     # DNS
-      - "3000:3000/tcp" # Initial setup only
     volumes:
-      - adguard-work:/opt/adguardhome/work
-      - adguard-conf:/opt/adguardhome/conf
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/adguard/work:/opt/adguardhome/work
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/adguard/conf:/opt/adguardhome/conf
     environment:
       - TZ=${TZ}
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.adguard.rule=Host(`dns.${DOMAIN}`)"
-      - "traefik.http.routers.adguard.entrypoints=websecure"
+      - "traefik.http.routers.adguard.entrypoints=admin"
       - "traefik.http.routers.adguard.tls.certresolver=letsencrypt"
       - "traefik.http.services.adguard.loadbalancer.server.port=80"
     networks:
       - proxy
-
-volumes:
-  adguard-work:
-  adguard-conf:
 
 networks:
   proxy:

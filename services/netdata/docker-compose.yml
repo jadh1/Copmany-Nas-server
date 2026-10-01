@@ -1,8 +1,9 @@
 services:
   netdata:
-    image: netdata/netdata:latest
+    image: netdata/netdata:v1.46.3
     container_name: netdata
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     pid: host
     cap_add:
       - SYS_PTRACE
@@ -10,8 +11,8 @@ services:
     security_opt:
       - apparmor:unconfined
     volumes:
-      - netdata-config:/etc/netdata
-      - netdata-lib:/var/lib/netdata
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/netdata/config:/etc/netdata
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/netdata/lib:/var/lib/netdata
       - netdata-cache:/var/cache/netdata
       - /etc/passwd:/host/etc/passwd:ro
       - /etc/group:/host/etc/group:ro
@@ -26,15 +27,13 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.netdata.rule=Host(`monitor.${DOMAIN}`)"
-      - "traefik.http.routers.netdata.entrypoints=websecure"
+      - "traefik.http.routers.netdata.entrypoints=admin"
       - "traefik.http.routers.netdata.tls.certresolver=letsencrypt"
       - "traefik.http.services.netdata.loadbalancer.server.port=19999"
     networks:
       - proxy
 
 volumes:
-  netdata-config:
-  netdata-lib:
   netdata-cache:
 
 networks:

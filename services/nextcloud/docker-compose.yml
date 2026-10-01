@@ -2,10 +2,11 @@ services:
   nextcloud-db:
     image: mariadb:11
     container_name: nextcloud-db
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
     volumes:
-      - nextcloud-db:/var/lib/mysql
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/mariadb:/var/lib/mysql
     environment:
       - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASSWORD}
       - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
@@ -14,24 +15,38 @@ services:
       - TZ=${TZ}
     networks:
       - nextcloud-internal
+    healthcheck:
+      test: ["CMD-SHELL", "mariadb-admin ping -h localhost --silent"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   nextcloud-redis:
     image: redis:7-alpine
     container_name: nextcloud-redis
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     networks:
       - nextcloud-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
   nextcloud:
     image: nextcloud:28
     container_name: nextcloud
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     depends_on:
-      - nextcloud-db
-      - nextcloud-redis
+      nextcloud-db:
+        condition: service_healthy
+      nextcloud-redis:
+        condition: service_healthy
     volumes:
-      - nextcloud-data:/var/www/html
-      - /mnt/storage:/var/www/html/data
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/nextcloud/html:/var/www/html
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/nextcloud/data:/var/www/html/data
     environment:
       - MYSQL_HOST=nextcloud-db
       - MYSQL_DATABASE=nextcloud
@@ -57,10 +72,11 @@ services:
     networks:
       - proxy
       - nextcloud-internal
-
-volumes:
-  nextcloud-db:
-  nextcloud-data:
+    healthcheck:
+      test: ["CMD-SHELL", "php -r 'exit((int)!@fsockopen(\"127.0.0.1\", 80));'"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
 
 networks:
   proxy:

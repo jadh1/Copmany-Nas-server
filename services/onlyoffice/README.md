@@ -20,12 +20,24 @@ Copy the output → paste into `.env` as `ONLYOFFICE_JWT_SECRET`
 ---
 
 ## Step 2 — Start ONLYOFFICE
+
+### Production
+In production, ONLYOFFICE is started via the managed systemd lifecycle:
 ```bash
-cd services/onlyoffice
-docker compose up -d
+# Start as part of the managed application stack:
+sudo systemctl start company-applications.service
+
+# Or start individually using the managed wrapper:
+sudo /opt/server/scripts/compose-managed.sh onlyoffice up -d
 ```
 
-Wait 2-3 minutes for ONLYOFFICE to fully initialize.
+### Local Development
+For local testing using the development compose definition:
+```bash
+docker compose -f docker-compose.local.yml up -d onlyoffice
+```
+
+Wait 2-3 minutes for ONLYOFFICE Document Server to fully initialize.
 
 ---
 

@@ -1,0 +1,123 @@
+name: Deploy (Serial Canary Rollout)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy-server-a:
+    name: Deploy → Server A (Primary Node)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Deploy to Server A via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_A_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "================================================"
+            echo "  Deploying to Server A — $(date)"
+            echo "================================================"
+
+            cd /opt/server
+            git fetch origin main
+            TARGET_SHA=$(git rev-parse origin/main)
+
+            echo ""
+            echo "--- Preflight fetched revision ($TARGET_SHA) before live checkout changes ---"
+            PREFLIGHT_TREE=$(mktemp -d /tmp/company-preflight.XXXXXX)
+            cleanup() {
+              git worktree remove --force "$PREFLIGHT_TREE" >/dev/null 2>&1 || rm -rf "$PREFLIGHT_TREE"
+            }
+            trap cleanup EXIT
+            git worktree add --detach "$PREFLIGHT_TREE" "$TARGET_SHA"
+            ln -s /opt/server/.env "$PREFLIGHT_TREE/.env"
+            bash "$PREFLIGHT_TREE/scripts/production-preflight.sh"
+            cleanup
+            trap - EXIT
+
+            echo "--- Fast-forwarding live checkout to validated commit ---"
+            git merge --ff-only "$TARGET_SHA"
+            sudo chmod 0750 /opt/server/scripts/*.sh
+
+            echo "--- Controlled application restart ---"
+            sudo systemctl restart company-applications.service
+            sudo systemctl is-active --quiet company-applications.service
+
+            echo ""
+            echo "--- Container status ---"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "================================================"
+            echo "  ✅ Deploy complete on Server A"
+            echo "================================================"
+
+  deploy-server-b:
+    name: Deploy → Server B (Secondary Node)
+    needs: deploy-server-a
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Deploy to Server B via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_B_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            echo "================================================"
+            echo "  Deploying to Server B — $(date)"
+            echo "================================================"
+
+            cd /opt/server
+            git fetch origin main
+            TARGET_SHA=$(git rev-parse origin/main)
+
+            echo ""
+            echo "--- Preflight fetched revision ($TARGET_SHA) before live checkout changes ---"
+            PREFLIGHT_TREE=$(mktemp -d /tmp/company-preflight.XXXXXX)
+            cleanup() {
+              git worktree remove --force "$PREFLIGHT_TREE" >/dev/null 2>&1 || rm -rf "$PREFLIGHT_TREE"
+            }
+            trap cleanup EXIT
+            git worktree add --detach "$PREFLIGHT_TREE" "$TARGET_SHA"
+            ln -s /opt/server/.env "$PREFLIGHT_TREE/.env"
+            bash "$PREFLIGHT_TREE/scripts/production-preflight.sh"
+            cleanup
+            trap - EXIT
+
+            echo "--- Fast-forwarding live checkout to validated commit ---"
+            git merge --ff-only "$TARGET_SHA"
+            sudo chmod 0750 /opt/server/scripts/*.sh
+
+            echo "--- Controlled application restart ---"
+            sudo systemctl restart company-applications.service
+            sudo systemctl is-active --quiet company-applications.service
+
+            echo ""
+            echo "--- Container status ---"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo ""
+            echo "================================================"
+            echo "  ✅ Deploy complete on Server B"
+            echo "================================================"

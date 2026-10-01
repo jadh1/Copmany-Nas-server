@@ -1,0 +1,9 @@
+[Unit]
+Description=Verify approved company storage and backup mounts
+Before=company-applications.service
+After=local-fs.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/server/scripts/verify-storage.sh
+RemainAfterExit=yes

@@ -2,24 +2,26 @@ services:
   traefik:
     image: traefik:v3.0
     container_name: traefik
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     security_opt:
       - no-new-privileges:true
     ports:
       - "80:80"
       - "443:443"
+      - "${TAILSCALE_ADMIN_BIND_IP:?TAILSCALE_ADMIN_BIND_IP must be set}:8443:8443"
     environment:
       - TZ=${TZ}
     volumes:
       - /etc/localtime:/etc/localtime:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./traefik.yml:/traefik.yml:ro
-      - ./acme.json:/acme.json
-      - ./logs:/logs
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/traefik/acme.json:/acme.json
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/logs/traefik:/logs
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
+      - "traefik.http.routers.traefik.entrypoints=admin"
       - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
       - "traefik.http.routers.traefik.service=api@internal"
       - "traefik.http.routers.traefik.middlewares=auth"

@@ -1,0 +1,8 @@
+[Unit]
+Description=Create and validate application-consistent Nextcloud MariaDB backup
+Requires=company-storage-guard.service docker.service
+After=company-storage-guard.service docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/server/scripts/backup-mariadb.sh

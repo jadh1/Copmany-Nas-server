@@ -24,6 +24,8 @@
           - ufw
           - fail2ban
           - unattended-upgrades
+          - smartmontools
+          - acl
           - ca-certificates
           - gnupg
           - lsb-release
@@ -62,16 +64,30 @@
     - name: Install Tailscale
       shell: curl -fsSL https://tailscale.com/install.sh | sh
 
-    - name: Configure UFW firewall
+    - name: Configure UFW firewall baseline
       shell: |
         ufw default deny incoming
         ufw default allow outgoing
-        ufw allow ssh
         ufw allow 80/tcp
         ufw allow 443/tcp
-        ufw allow 53/tcp
-        ufw allow 53/udp
         ufw --force enable
+
+    - name: Permit private administration after tested recovery access is confirmed
+      command: 'ufw allow in on tailscale0 to any port {{ item }} proto tcp'
+      loop: ['22', '8443']
+      when: (company_tailscale_access_confirmed | default(false)) | bool
+
+    - name: Remove legacy public SSH rule after private access is confirmed
+      command: ufw --force delete allow 22/tcp
+      register: remove_public_ssh
+      changed_when: remove_public_ssh.rc == 0
+      failed_when: remove_public_ssh.rc not in [0, 1]
+      when: (company_tailscale_access_confirmed | default(false)) | bool
+
+    - name: Permit AdGuard DNS only for explicitly approved LAN ranges
+      command: 'ufw allow from {{ item.0 }} to any port 53 proto {{ item.1 }}'
+      loop: '{{ (adguard_dns_allowed_cidrs | default([])) | product(["tcp", "udp"]) | list }}'
+      when: (adguard_dns_allowed_cidrs | default([])) | length > 0
 
     - name: Configure fail2ban
       copy:
@@ -99,20 +115,113 @@
         state: touch
         mode: "0600"
 
-    - name: Create storage mount point
+    - name: Create mountpoint directories without mounting or formatting disks
       file:
-        path: /mnt/storage
+        path: '{{ company_storage_root | default("/mnt/company") }}'
         state: directory
         mode: "0755"
 
     - name: Create backup mount point
       file:
-        path: /mnt/backup
+        path: '{{ company_backup_root | default("/mnt/company-backup") }}'
         state: directory
         mode: "0755"
 
+    - name: Require explicit storage facts before creating an enforceable storage guard
+      assert:
+        that:
+          - company_storage_expected_source | length > 0
+          - company_storage_expected_fstype | length > 0
+          - company_backup_expected_source | length > 0
+          - company_backup_expected_fstype | length > 0
+        fail_msg: >-
+          REQUIRES HARDWARE DECISION: set approved mount source and filesystem facts in
+          ansible/group_vars/all.yml. This playbook will not guess, format, or mount disks.
+      when: (company_storage_configured | default(false)) | bool
+
+    - name: Install approved storage guard configuration
+      template:
+        src: company-storage.conf.j2
+        dest: /etc/company-storage.conf
+        owner: root
+        group: root
+        mode: '0640'
+      when: (company_storage_configured | default(false)) | bool
+
+    - name: Install storage gate, application lifecycle, and database backup units
+      copy:
+        src: '../systemd/{{ item }}'
+        dest: '/etc/systemd/system/{{ item }}'
+        owner: root
+        group: root
+        mode: '0644'
+      loop:
+        - company-storage-guard.service
+        - company-applications.service
+        - company-mariadb-backup.service
+        - company-mariadb-backup.timer
+      notify: reload systemd
+
+    - name: Set production script permissions
+      file:
+        path: '{{ server_path }}/scripts/{{ item }}'
+        owner: root
+        group: root
+        mode: '0750'
+      loop:
+        - verify-storage.sh
+        - verify-migration.sh
+        - production-preflight.sh
+        - compose-managed.sh
+        - compose-stop.sh
+        - disable-unmanaged-autostart.sh
+        - record-migration-complete.sh
+        - backup-mariadb.sh
+        - check-services.sh
+
+    - name: Reload systemd units before enabling them
+      systemd:
+        daemon_reload: true
+
+    - name: Require passed production preflight before changing Docker restart policies
+      command: '{{ server_path }}/scripts/production-preflight.sh'
+      when: (company_storage_configured | default(false)) | bool
+
+    - name: Disable legacy Docker auto-start after storage and migration preflight
+      command: '{{ server_path }}/scripts/disable-unmanaged-autostart.sh'
+      when: (company_storage_configured | default(false)) | bool
+
+    - name: Enable storage-gated application lifecycle only after storage approval
+      systemd:
+        name: '{{ item }}'
+        enabled: true
+      loop:
+        - company-applications.service
+        - company-mariadb-backup.timer
+      when: (company_storage_configured | default(false)) | bool
+
+    - name: Harden SSH after private recovery access is confirmed
+      template:
+        src: 99-company-ssh.conf.j2
+        dest: /etc/ssh/sshd_config.d/99-company.conf
+        owner: root
+        group: root
+        mode: '0644'
+        validate: '/usr/sbin/sshd -t -f %s'
+      when: (company_tailscale_access_confirmed | default(false)) | bool
+      notify: restart ssh
+
   handlers:
+    - name: reload systemd
+      systemd:
+        daemon_reload: true
+
     - name: restart fail2ban
       service:
         name: fail2ban
+        state: restarted
+
+    - name: restart ssh
+      service:
+        name: ssh
         state: restarted

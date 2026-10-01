@@ -33,6 +33,9 @@ services:
     volumes:
       - nextcloud-db:/var/lib/mysql
     environment:
+      - TZ=${TZ}
+      - NETDATA_CLAIM_TOKEN=""
+      - DO_NOT_TRACK=1
       - MYSQL_ROOT_PASSWORD=${NEXTCLOUD_DB_ROOT_PASSWORD}
       - MYSQL_PASSWORD=${NEXTCLOUD_DB_PASSWORD}
       - MYSQL_DATABASE=nextcloud

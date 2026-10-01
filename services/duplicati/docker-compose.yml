@@ -1,21 +1,23 @@
 services:
   duplicati:
-    image: lscr.io/linuxserver/duplicati:latest
+    image: lscr.io/linuxserver/duplicati:2.1.0
     container_name: duplicati
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     environment:
       - PUID=1000
       - PGID=1000
       - TZ=${TZ}
       - CLI_ARGS=
     volumes:
-      - duplicati-config:/config
-      - /mnt/storage:/source:ro         # what to backup (nextcloud data)
-      - /mnt/backup:/backups            # local external HDD mount
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/application-data/duplicati:/config
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}:/source:ro
+      - ${BACKUP_ROOT:?BACKUP_ROOT must be set}:/backups
+      - /opt/server:/infrastructure:ro
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.duplicati.rule=Host(`backup.${DOMAIN}`)"
-      - "traefik.http.routers.duplicati.entrypoints=websecure"
+      - "traefik.http.routers.duplicati.entrypoints=admin"
       - "traefik.http.routers.duplicati.tls.certresolver=letsencrypt"
       - "traefik.http.services.duplicati.loadbalancer.server.port=8200"
       # Restrict to admin only via Traefik IP whitelist or VPN only
@@ -23,9 +25,6 @@ services:
       - "traefik.http.middlewares.duplicati-auth.basicauth.users=${TRAEFIK_DASHBOARD_PASSWORD_HASH}"
     networks:
       - proxy
-
-volumes:
-  duplicati-config:
 
 networks:
   proxy:

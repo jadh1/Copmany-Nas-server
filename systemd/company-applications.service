@@ -1,0 +1,31 @@
+[Unit]
+Description=Company stateful applications
+Requires=company-storage-guard.service docker.service
+After=company-storage-guard.service docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/server
+ExecStartPre=/opt/server/scripts/production-preflight.sh
+ExecStart=/opt/server/scripts/compose-managed.sh traefik up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh nextcloud up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh onlyoffice up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh duplicati up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh portainer up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh netdata up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh adguard up -d --remove-orphans
+ExecStart=/opt/server/scripts/compose-managed.sh stirling-pdf up -d --remove-orphans
+ExecStartPost=/opt/server/scripts/check-services.sh
+ExecStop=/opt/server/scripts/compose-stop.sh duplicati
+ExecStop=/opt/server/scripts/compose-stop.sh onlyoffice
+ExecStop=/opt/server/scripts/compose-stop.sh nextcloud
+ExecStop=/opt/server/scripts/compose-stop.sh stirling-pdf
+ExecStop=/opt/server/scripts/compose-stop.sh adguard
+ExecStop=/opt/server/scripts/compose-stop.sh netdata
+ExecStop=/opt/server/scripts/compose-stop.sh portainer
+ExecStop=/opt/server/scripts/compose-stop.sh traefik
+TimeoutStartSec=10min
+
+[Install]
+WantedBy=multi-user.target

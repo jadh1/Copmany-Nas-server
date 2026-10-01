@@ -1,8 +1,9 @@
 services:
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    image: onlyoffice/documentserver:8.1.1.1
     container_name: onlyoffice
-    restart: unless-stopped
+    restart: "no"
+    profiles: ["managed"]
     environment:
       - JWT_ENABLED=true
       - JWT_SECRET=${ONLYOFFICE_JWT_SECRET}
@@ -10,10 +11,10 @@ services:
       - JWT_IN_BODY=true
       - TZ=${TZ}
     volumes:
-      - onlyoffice-data:/var/www/onlyoffice/Data
-      - onlyoffice-logs:/var/log/onlyoffice
-      - onlyoffice-cache:/var/lib/onlyoffice
-      - onlyoffice-db:/var/lib/postgresql
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/onlyoffice/data:/var/www/onlyoffice/Data
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/onlyoffice/logs:/var/log/onlyoffice
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/onlyoffice/cache:/var/lib/onlyoffice
+      - ${STORAGE_ROOT:?STORAGE_ROOT must be set}/onlyoffice/db:/var/lib/postgresql
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.onlyoffice.rule=Host(`office.${DOMAIN}`)"
@@ -27,12 +28,11 @@ services:
       - "traefik.http.middlewares.onlyoffice-headers.headers.stsIncludeSubdomains=true"
     networks:
       - proxy
-
-volumes:
-  onlyoffice-data:
-  onlyoffice-logs:
-  onlyoffice-cache:
-  onlyoffice-db:
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/healthcheck || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
 
 networks:
   proxy:
