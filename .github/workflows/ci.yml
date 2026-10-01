@@ -1,0 +1,39 @@
+name: CI (Repository Validation)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate-repository:
+    name: Validate Repository & Safety Controls
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate shell script syntax
+        run: |
+          bash -n scripts/*.sh
+          bash -n tests/*.sh
+
+      - name: Validate local development Compose
+        run: |
+          docker compose -f docker-compose.local.yml config --quiet
+
+      - name: Validate managed production Compose definitions
+        run: |
+          for service_dir in services/*/; do
+            if [ -f "$service_dir/docker-compose.yml" ]; then
+              echo "Validating $service_dir/docker-compose.yml..."
+              docker compose --profile managed -f "$service_dir/docker-compose.yml" config --quiet
+            fi
+          done
+
+      - name: Run Phase 0-1 safety regression suite
+        run: |
+          bash tests/phase_0_1_safety.sh

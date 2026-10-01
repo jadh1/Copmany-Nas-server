@@ -30,49 +30,49 @@ The platform operates as a single-primary-node deployment per site with canary d
 ```mermaid
 flowchart TD
     subgraph WAN["Public Internet (WAN)"]
-        Employees["Company Employees\n(Browser / Sync Clients)"]
+        Employees["Company Employees<br/>Browser and Desktop Clients"]
     end
 
     subgraph Tailnet["Tailscale Mesh Network"]
-        Admins["System Administrators\n(Authorized Tailnet Nodes)"]
+        Admins["System Administrators<br/>Authorized Tailnet Nodes"]
     end
 
     subgraph Host["Host Infrastructure (Server A / Server B)"]
-        subgraph Edge["Edge & Ingress (Traefik v3)"]
-            ProxyPublic["Public Ingress\nPorts: 80 / 443 (0.0.0.0)\nTLS (ACME / Let's Encrypt)"]
-            ProxyAdmin["Private Admin Ingress\nPort: 8443 (tailscale0 IP only)\nEntrypoint: admin"]
+        subgraph Edge["Edge and Ingress (Traefik v3)"]
+            ProxyPublic["Public Ingress<br/>Ports 80 and 443<br/>ACME TLS via Let's Encrypt"]
+            ProxyAdmin["Private Admin Ingress<br/>Port 8443 on tailscale0<br/>Entrypoint: admin"]
         end
 
         subgraph Core["Core Collaboration Tier"]
-            Nextcloud["Nextcloud 28\nfiles.company.com"]
-            OnlyOffice["ONLYOFFICE Document Server\noffice.company.com"]
+            Nextcloud["Nextcloud 28<br/>files.company.com"]
+            OnlyOffice["ONLYOFFICE Document Server<br/>office.company.com"]
         end
 
         subgraph Data["Internal Data Tier (Private Bridge)"]
-            MariaDB[("MariaDB 11\n(InnoDB / Binlog)")]
-            Redis[("Redis 7\n(Transactional Locks)")]
+            MariaDB[("MariaDB 11<br/>InnoDB / Binlog")]
+            Redis[("Redis 7<br/>Transactional Locks")]
         end
 
         subgraph Tooling["Administrative Services (Admin Ingress Only)"]
-            Portainer["Portainer CE (Port 9000)"]
-            Netdata["Netdata Metrics (Port 19999)"]
-            Duplicati["Duplicati Backup UI (Port 8200)"]
-            AdGuard["AdGuard Home DNS (Port 80)"]
-            StirlingPDF["Stirling PDF (Port 8080)"]
+            Portainer["Portainer CE<br/>Port 9000"]
+            Netdata["Netdata Metrics<br/>Port 19999"]
+            Duplicati["Duplicati Backup UI<br/>Port 8200"]
+            AdGuard["AdGuard Home DNS<br/>Port 80"]
+            StirlingPDF["Stirling PDF<br/>Port 8080"]
         end
 
         subgraph Storage["Dedicated Storage Subsystem"]
-            PoolStorage["Approved Storage Mount\n/mnt/company"]
-            PoolBackup["Approved Backup Mount\n/mnt/company-backup"]
+            PoolStorage["Approved Storage Mount<br/>/mnt/company"]
+            PoolBackup["Approved Backup Mount<br/>/mnt/company-backup"]
         end
     end
 
     subgraph Offsite["Offsite Backup (Target Architecture)"]
-        B2["Backblaze B2\n(Object Lock / Immutable Retention)"]
+        B2["Backblaze B2<br/>Planned Immutable Offsite Backup"]
     end
 
-    Employees -->|HTTPS:443| ProxyPublic
-    Admins -->|HTTPS:8443| ProxyAdmin
+    Employees -->|HTTPS Port 443| ProxyPublic
+    Admins -->|HTTPS Port 8443| ProxyAdmin
 
     ProxyPublic --> Nextcloud
     ProxyPublic --> OnlyOffice
@@ -83,8 +83,8 @@ flowchart TD
     ProxyAdmin --> AdGuard
     ProxyAdmin --> StirlingPDF
 
-    Nextcloud <-->|SQL| MariaDB
-    Nextcloud <-->|Locks / Cache| Redis
+    Nextcloud <-->|SQL Queries| MariaDB
+    Nextcloud <-->|Cache and Locks| Redis
     Nextcloud <-->|JWT Integration| OnlyOffice
 
     Nextcloud -->|Bind Mount| PoolStorage
@@ -94,7 +94,7 @@ flowchart TD
 
     MariaDB -.->|Daily Atomic Dump| PoolBackup
     Duplicati -.->|Staged File Backup| PoolBackup
-    Duplicati -.->|Encrypted Upload (Planned)| B2
+    Duplicati -.->|Planned encrypted upload| B2
 ```
 
 ---
@@ -155,27 +155,74 @@ The backup subsystem combines automated local staging with planned immutable off
 
 ## Deployment Architecture
 
-Deployments are governed by a serial canary rollout automated via GitHub Actions (`.github/workflows/deploy.yml`):
+The project decouples continuous integration (repository validation) from production host deployment to ensure repository integrity can be verified automatically without requiring access to physical hardware.
+
+### Continuous Integration Pipeline
+Continuous integration is automated via `.github/workflows/ci.yml` on every push to `main` and pull request:
+- **Shell Syntax Validation:** Verifies syntax across all operational shell scripts (`bash -n scripts/*.sh`) and test harnesses.
+- **Compose Definition Validation:** Verifies Compose files across local workstation definitions and production profiles (`--profile managed`).
+- **Safety Regression Harness:** Executes the non-destructive Phase 0–1 safety regression test suite (`tests/phase_0_1_safety.sh`, 15/15 checks).
+
+### Production Deployment Sequence
+Production deployment is automated via `.github/workflows/deploy.yml` and is triggered on-demand via `workflow_dispatch` (manual trigger) once target hardware is provisioned:
 
 ```text
-git push origin main
-       │
-       ▼
-[Deploy → Server A]
-       ├─► Fetch origin/main & resolve target commit SHA
+Manual Production Deployment (workflow_dispatch)
+                     │
+                     ▼
+          Resolve target commit SHA
+                     │
+                     ▼
+[Deploy → Server A (Primary Node)]
+       ├─► Fetch origin/main & resolve immutable target commit SHA
        ├─► Create isolated temporary git worktree
-       ├─► Execute production preflight validation
+       ├─► Execute production preflight validation (scripts/production-preflight.sh)
        ├─► Fast-forward live checkout (git merge --ff-only TARGET_SHA)
        ├─► Restart managed systemd service (company-applications.service)
        └─► Validate container health and TLS endpoints
        │
-       │ (Rollout proceeds only if Server A health checks pass)
+       │ (Rollout proceeds to Server B only if Server A health checks pass)
        ▼
-[Deploy → Server B]
+[Deploy → Server B (Secondary Node)]
        └─► Executes identical preflight, update, and validation sequence
 ```
 
 This workflow guarantees that the exact commit that passed preflight validation is the commit deployed to production, preventing race conditions or branch divergence.
+
+---
+
+## Deployment Prerequisites
+
+Automated production deployment is intentionally inactive until physical server infrastructure is provisioned and authenticated.
+
+### Required GitHub Actions Secrets
+The deployment workflow (`.github/workflows/deploy.yml`) references the following repository secret names:
+
+| Secret Name | Purpose |
+|---|---|
+| `SERVER_A_IP` | SSH address of primary deployment node |
+| `SERVER_B_IP` | SSH address of secondary/canary deployment node |
+| `SERVER_USER` | Restricted deployment user account on the target hosts |
+| `SSH_PRIVATE_KEY` | Private SSH key matching the public key authorized on both servers |
+
+*Security Policy: In accordance with enterprise security standards, secrets are stored exclusively in GitHub Actions and never committed to version control. No secret values or real/fake IP addresses are embedded in this repository.*
+
+### Secret Configuration Location
+To configure deployment secrets, navigate in GitHub to:
+**Repository Settings → Secrets and variables → Actions → Repository secrets**
+
+### Host Prerequisites for Live Deployment
+Before a live deployment can execute successfully, the following infrastructure conditions must be established:
+1. **Host Reachability:** Server A and Server B must be powered on, running Ubuntu 24.04 LTS, and reachable over SSH (port 22 or designated deployment port).
+2. **Deployment Account:** The user specified in `SERVER_USER` must exist on both hosts with sudo permissions restricted to necessary deployment commands.
+3. **SSH Authentication:** The public key corresponding to `SSH_PRIVATE_KEY` must be installed in `~/.ssh/authorized_keys` for the deployment user on both nodes.
+4. **Network & Routing:** Firewall rules (UFW), cloud security groups, or Tailnet mesh routing must permit inbound SSH from the GitHub Actions runner IP range or designated proxy runner.
+5. **Host Repository Path:** The repository must be cloned to `/opt/server` on both nodes with proper file ownership.
+6. **Storage Gate Fulfillment:** Phase 0–1 storage prerequisites must be satisfied (`/etc/company-storage.conf` configured, physical storage mounted, layout initialized).
+
+### Current CI/CD Behavior
+- **Repository Validation:** **PASS** — Every push to `main` executes `.github/workflows/ci.yml`, verifying script syntax, compose manifests, and safety test suites. This runs cleanly without physical hardware.
+- **Production Deployment:** **INACTIVE** — `.github/workflows/deploy.yml` is configured with `workflow_dispatch` (manual trigger). It does not automatically run on every push, preventing failed deployment runs while physical hardware is unprovisioned.
 
 ---
 
@@ -184,7 +231,8 @@ This workflow guarantees that the exact commit that passed preflight validation 
 ```text
 ├── .github/
 │   └── workflows/
-│       └── deploy.yml                 # Serial canary deployment workflow
+│       ├── ci.yml                     # Static syntax & safety regression CI workflow
+│       └── deploy.yml                 # Manual serial canary deployment workflow
 ├── ansible/
 │   ├── group_vars/
 │   │   └── all.yml.example            # Storage and access configuration template
@@ -275,10 +323,11 @@ Production deployment follows a strict sequence:
 
 ## Current Readiness
 
-| Environment | Status | Verification Detail |
+| Dimension | Status | Notes |
 |---|---|---|
-| **Repository Baseline** | **READY FOR ISOLATED LIVE-HOST VALIDATION** | All Phase 0–1 safety controls, shell scripts, Compose configurations, backup atomicity, and deployment pipelines are verified. |
-| **Production Infrastructure** | **NOT READY — LIVE VALIDATION REQUIRED** | Blocked pending live validation on physical hardware, real ZFS pool testing, reboot behavior, offsite B2 integration, and full restore drills. |
+| **Repository Validation** | **PASS — Ready for isolated live-host validation** | All Phase 0–1 safety controls, shell scripts, Compose configurations, backup atomicity, and regression tests are verified. Continuous integration validates every commit. |
+| **Automated Production Deployment** | **INACTIVE — Physical deployment hosts are not currently provisioned** | Serial canary deployment workflow is preserved under manual trigger (`workflow_dispatch`); execution requires physical hardware and GitHub repository secrets. |
+| **Production Infrastructure** | **NOT READY — Live infrastructure validation required** | Blocked pending live validation on physical hardware, real ZFS pool testing, reboot behavior, offsite B2 integration, and full restore drills. |
 
 ### Remaining Live-Host Validation Tasks
 Prior to promoting any server to live production status:
