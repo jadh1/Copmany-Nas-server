@@ -1,4 +1,4 @@
-# KDCLB Enterprise Private Cloud Infrastructure
+# Private Company Cloud Infrastructure
 
 [![OS: Ubuntu](https://img.shields.io/badge/Ubuntu-24.04-E95420?logo=ubuntu)](https://ubuntu.com/)
 ![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?logo=docker)
@@ -10,7 +10,7 @@
 **A highly available, self-hosted enterprise private cloud infrastructure designed for secure file synchronization, collaborative document editing, and centralized internal tooling.**
 
 > **Target Audience**
-> This infrastructure is engineered for KDCLB personnel requiring secure, real-time collaboration platforms, and systems administrators overseeing multi-site deployments with stringent security and uptime requirements.
+> This infrastructure is engineered for private company personnel requiring secure, real-time collaboration platforms, and systems administrators overseeing multi-site deployments with stringent security and uptime requirements.
 
 > **Business Value**
 > Replaces fragmented, high-cost public SaaS subscriptions with a unified, self-hosted private cloud. It ensures complete data sovereignty, offers enterprise-grade capabilities, and drastically reduces operational expenditures across multiple organizational locations.
@@ -29,20 +29,20 @@
 
 Prior to deployment, ensure organizational accounts and API credentials are provisioned for the following services:
 
-| Service | Purpose | Platform |
+| Service | Purpose & Explanation | Platform |
 |---------|---------|------|
-| **Cloudflare** | DNS Management & DDoS Mitigation | [cloudflare.com](https://www.cloudflare.com/) |
-| **Tailscale** | Secure Overlay Network / Admin Access | [tailscale.com](https://tailscale.com/) |
-| **GitHub** | CI/CD Actions & Secrets Management | [github.com](https://github.com/) |
-| **Backblaze B2** | Immutable Offsite Backups | [backblaze.com](https://www.backblaze.com/) |
+| **Cloudflare** | **DNS & Edge Protection:** Acts as the entry point for all traffic, hiding our real server IP addresses from the public web and mitigating malicious traffic or DDoS attacks before they reach our servers. | [cloudflare.com](https://www.cloudflare.com/) |
+| **Tailscale** | **Zero-Trust Network:** Creates a secure, encrypted peer-to-peer network (VPN) that allows administrators to securely SSH into servers and access backend dashboards without opening dangerous ports to the public internet. | [tailscale.com](https://tailscale.com/) |
+| **GitHub** | **CI/CD & Version Control:** Hosts our infrastructure code. GitHub Actions automatically pushes updates to our servers when code changes, and GitHub Secrets securely stores our passwords and API keys. | [github.com](https://github.com/) |
+| **Backblaze B2** | **Offsite Backups:** Provides enterprise-grade, encrypted cloud storage where our daily automated system and database backups are securely stored offsite for disaster recovery. | [backblaze.com](https://www.backblaze.com/) |
 
 ---
 
 ## Infrastructure Overview
 
-This KDCLB Private Cloud serves as an integrated, self-hosted ecosystem. It provides personnel with secure data storage and real-time collaboration tools, while equipping administrators with a centralized dashboard for deployment, monitoring, and automated disaster recovery.
+This Private Company Cloud serves as an integrated, self-hosted ecosystem. It provides personnel with secure data storage and real-time collaboration tools, while equipping administrators with a centralized dashboard for deployment, monitoring, and automated disaster recovery.
 
-**For Organizational Personnel:** Access organizational assets securely from any location via `files.kdclb.com`. Collaborate on standard document formats (Word, Excel, PowerPoint) directly within the browser, and leverage internal utilities for document processing.
+**For Organizational Personnel:** Access organizational assets securely from any location via `files.company.com`. Collaborate on standard document formats (Word, Excel, PowerPoint) directly within the browser, and leverage internal utilities for document processing.
 
 **For Systems Administrators:** Execute seamless, automated deployments across multiple server environments utilizing GitHub Actions. Monitor system telemetry in real-time, manage containerized workloads, and ensure business continuity through automated backup schedules.
 
@@ -62,37 +62,37 @@ This KDCLB Private Cloud serves as an integrated, self-hosted ecosystem. It prov
 - Infrastructure defined as Code (Ansible & GitHub Actions)
 - Localized DNS-level threat and tracker mitigation (AdGuard)
 
-## Features
+## Features & Explanations
 
 ### End-User Services (Internal)
 
-| Capability | Access Point | Description |
+| Capability | Access Point | Detailed Explanation |
 |---------|-------------|-------------|
-| **File Storage & Synchronization** | `files.kdclb.com` | Nextcloud deployment for enterprise file sharing and cross-device synchronization. |
-| **Collaborative Editing** | `office.kdclb.com` | ONLYOFFICE integration for browser-based document co-authoring. |
-| **Document Processing** | `pdf.kdclb.com` | Stirling PDF for internal document modification, merging, and secure conversion. |
-| **Network Protection** | `dns.kdclb.com` | Internal DNS resolution and threat filtering powered by AdGuard. |
+| **File Storage & Synchronization** | `files.company.com` | **Powered by Nextcloud:** A self-hosted alternative to Google Drive or Dropbox. It provides secure enterprise file sharing, cross-device synchronization, and granular folder permissions for different teams. |
+| **Collaborative Editing** | `office.company.com` | **Powered by ONLYOFFICE:** A robust office suite running entirely in the browser. It integrates directly with Nextcloud to allow multiple employees to co-author Word documents, Excel spreadsheets, and PowerPoint presentations in real-time. |
+| **Document Processing** | `pdf.company.com` | **Powered by Stirling PDF:** A private suite of PDF tools. It allows employees to modify, merge, sign, and convert PDFs securely without uploading confidential company data to third-party public websites. |
+| **Network Protection** | `dns.company.com` | **Powered by AdGuard:** A localized DNS resolver that filters out malware domains, tracking scripts, and intrusive advertisements, protecting employees while connected to the company network. |
 
 ### Administrative Tooling
 
-| Capability | Access Point | Description |
+| Capability | Access Point | Detailed Explanation |
 |---------|-------------|-------------|
-| **Workload Management** | `portainer.kdclb.com` | Portainer dashboard for visual container orchestration and lifecycle management. |
-| **System Telemetry** | `monitor.kdclb.com` | Netdata integration providing real-time hardware utilization and process monitoring. |
-| **Disaster Recovery** | `backup.kdclb.com` | Duplicati interface for configuring retention policies and executing granular restorations. |
-| **Traffic Orchestration** | `traefik.kdclb.com` | Traefik dashboard for monitoring internal routing and reverse proxy health. |
+| **Workload Management** | `portainer.company.com` | **Powered by Portainer:** Provides administrators with a visual interface to manage Docker containers, view application logs in real-time, restart crashed services, and monitor container resource usage without needing terminal access. |
+| **System Telemetry** | `monitor.company.com` | **Powered by Netdata:** A high-fidelity performance monitoring system that streams real-time metrics (CPU usage, RAM, disk I/O, network bandwidth) to help administrators identify bottlenecks and troubleshoot performance issues instantly. |
+| **Disaster Recovery** | `backup.company.com` | **Powered by Duplicati:** Handles automated, encrypted, and compressed daily backups of our databases and application state, pushing them to Backblaze B2 to ensure business continuity in case of hardware failure. |
+| **Traffic Orchestration** | `traefik.company.com` | **Powered by Traefik v3:** Our reverse proxy and API gateway. It intelligently routes incoming web traffic to the correct containerized application and automatically negotiates and renews Let's Encrypt SSL certificates for HTTPS security. |
 
 ### Advanced Technical Capabilities
 
-| Feature | Strategic Advantage |
+| Feature | Strategic Advantage & Explanation |
 |---------|----------------|
-| **Continuous Deployment** | Automated pipelines trigger server-wide updates upon commits to the `main` branch. |
-| **Zero-Trust Access** | Administrative interfaces and SSH access are strictly confined to the Tailscale secure overlay network. |
-| **Automated Provisioning** | Spin up bare-metal servers into production-ready nodes utilizing parameterized Ansible playbooks. |
-| **Automated Patching** | Watchtower automates container updates (critical persistence layers excluded for controlled manual updates). |
-| **Edge Protection** | Cloudflare proxies traffic to obscure origin IPs and mitigate volumetric DDoS attacks. |
-| **Secrets Management** | Cryptographic keys and `.env` variables are securely injected via GitHub Secrets, preventing repository exposure. |
-| **Hardened Posture** | Enforced UFW firewalls, Fail2ban intrusion prevention, key-only SSH authentication, and disabled root logins. |
+| **Continuous Deployment** | Automated GitHub Action pipelines trigger server-wide updates upon commits to the `main` branch, ensuring all servers are instantly synced with our latest configuration. |
+| **Zero-Trust Access** | Administrative interfaces and SSH access are strictly confined to the Tailscale secure overlay network. This means our servers have no open administrative ports exposed to the public internet, preventing brute-force attacks. |
+| **Automated Provisioning** | Spin up bare-metal servers into production-ready nodes utilizing parameterized Ansible playbooks. Ansible configures the OS, installs dependencies, and locks down security automatically, removing human error. |
+| **Automated Patching** | Watchtower runs in the background to automatically update non-critical Docker containers to their latest stable versions. Critical data persistence layers (Nextcloud/ONLYOFFICE) are excluded for controlled manual updates. |
+| **Edge Protection** | Cloudflare proxies our web traffic to obscure origin IPs from attackers and mitigates volumetric DDoS attacks at the edge, before they ever reach our infrastructure. |
+| **Secrets Management** | Cryptographic keys and `.env` variables are securely injected via GitHub Secrets at deployment time, preventing sensitive credentials from ever being exposed in the repository code. |
+| **Hardened Posture** | The servers are locked down with Uncomplicated Firewall (UFW), Fail2ban intrusion prevention (blocking IPs after failed logins), key-only SSH authentication (no passwords allowed), and disabled root logins. |
 
 ---
 
