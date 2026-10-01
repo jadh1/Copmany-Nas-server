@@ -26,11 +26,14 @@ jobs:
           docker compose -f docker-compose.local.yml config --quiet
 
       - name: Validate managed production Compose definitions
+        env:
+          STORAGE_ROOT: /tmp/company
+          TAILSCALE_ADMIN_BIND_IP: 127.0.0.1
         run: |
           for service_dir in services/*/; do
             if [ -f "$service_dir/docker-compose.yml" ]; then
               echo "Validating $service_dir/docker-compose.yml..."
-              docker compose --profile managed -f "$service_dir/docker-compose.yml" config --quiet
+              docker compose --env-file .env.example --profile managed -f "$service_dir/docker-compose.yml" config --quiet
             fi
           done
 
