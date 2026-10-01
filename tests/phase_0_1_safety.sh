@@ -5,8 +5,8 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 fixture="$tmp/repo"
-mkdir -p "$fixture"
 cp -R "$ROOT_DIR/scripts" "$fixture/scripts"
+chmod +x "$fixture/scripts"/*.sh
 mkdir -p "$tmp/bin"
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
